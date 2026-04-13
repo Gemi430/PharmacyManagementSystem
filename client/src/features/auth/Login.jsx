@@ -1,22 +1,37 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
+const BASE_URL = "http://localhost:5000/api";
+
 export default function Login() {
   const { login } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // ⚠️ TEMP LOGIN (no backend yet)
-    if (username === "admin" && password === "1234") {
-      login({ username, role: "admin" });
-    } else if (username === "pharma" && password === "1234") {
-      login({ username, role: "pharmacist" });
-    } else {
-      alert("Invalid credentials");
+    try {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message);
+        return;
+      }
+
+      login(data); // save user
+    } catch (err) {
+      console.error(err);
+      alert("Login failed");
     }
   };
 
