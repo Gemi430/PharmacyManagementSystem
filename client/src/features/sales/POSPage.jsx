@@ -27,6 +27,8 @@ export default function POSPage() {
   );
 
   const addToCart = (med) => {
+    if (med.stock === 0) return;
+
     const exists = cart.find((item) => item.id === med.id);
 
     if (exists) {
@@ -87,7 +89,6 @@ export default function POSPage() {
         return;
       }
 
-      // 🧾 SAVE RECEIPT
       setReceipt({
         items: cart,
         total: data.total,
@@ -121,27 +122,62 @@ export default function POSPage() {
         />
 
         <div className="grid grid-cols-2 gap-3">
-          {filteredMedicines.map((med) => (
-            <div
-              key={med.id}
-              className="border rounded p-3 shadow bg-white"
-            >
-              <h2 className="font-bold text-lg">{med.name}</h2>
-              <p>Price: ${med.price}</p>
-              <p>Stock: {med.stock}</p>
+          {filteredMedicines.map((med) => {
+            const isLowStock = med.stock > 0 && med.stock <= 5;
+            const isOutOfStock = med.stock === 0;
 
-              <button
-                onClick={() => addToCart(med)}
-                className="mt-2 bg-blue-500 text-white px-3 py-1 rounded"
+            return (
+              <div
+                key={med.id}
+                className={`border rounded p-3 shadow bg-white ${
+                  isLowStock ? "border-yellow-500" : ""
+                } ${isOutOfStock ? "opacity-50" : ""}`}
               >
-                Add
-              </button>
-            </div>
-          ))}
+                <h2 className="font-bold text-lg">{med.name}</h2>
+                <p>Price: ${med.price}</p>
+
+                <p
+                  className={`${
+                    isLowStock
+                      ? "text-yellow-600 font-semibold"
+                      : "text-gray-600"
+                  }`}
+                >
+                  Stock: {med.stock}
+                </p>
+
+                {/* ⚠️ LOW STOCK WARNING */}
+                {isLowStock && (
+                  <p className="text-yellow-600 text-sm">
+                    ⚠️ Low stock
+                  </p>
+                )}
+
+                {/* ❌ OUT OF STOCK */}
+                {isOutOfStock && (
+                  <p className="text-red-600 text-sm">
+                    ❌ Out of stock
+                  </p>
+                )}
+
+                <button
+                  onClick={() => addToCart(med)}
+                  disabled={isOutOfStock}
+                  className={`mt-2 px-3 py-1 rounded text-white ${
+                    isOutOfStock
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600"
+                  }`}
+                >
+                  Add to Cart
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* 🧾 CART + RECEIPT */}
+      {/* 🧾 CART / RECEIPT */}
       <div className="border rounded p-4 bg-white shadow">
 
         {!receipt ? (
