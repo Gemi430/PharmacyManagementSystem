@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import api from "../../api/axios";
 
 const BASE_URL = "http://localhost:5000/api";
 
@@ -14,16 +15,18 @@ export default function POSPage() {
 
   const fetchMedicines = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/medicines`);
+      const res = await api.get("/medicines");
       const data = await res.json();
-      setMedicines(data);
+      setMedicines(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
+  const isExpired = med.expiry_date && new Date(med.expiry_date) < new Date();
+
   const filteredMedicines = medicines.filter((med) =>
-    med.name.toLowerCase().includes(search.toLowerCase())
+    med.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const addToCart = (med) => {
@@ -34,10 +37,8 @@ export default function POSPage() {
     if (exists) {
       setCart(
         cart.map((item) =>
-          item.id === med.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
+          item.id === med.id ? { ...item, quantity: item.quantity + 1 } : item,
+        ),
       );
     } else {
       setCart([...cart, { ...med, quantity: 1 }]);
@@ -54,15 +55,12 @@ export default function POSPage() {
 
     setCart(
       cart.map((item) =>
-        item.id === id ? { ...item, quantity: value } : item
-      )
+        item.id === id ? { ...item, quantity: value } : item,
+      ),
     );
   };
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const checkout = async () => {
     try {
@@ -105,12 +103,9 @@ export default function POSPage() {
 
   return (
     <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 min-h-screen">
-
       {/* 💊 MEDICINES */}
       <div className="col-span-2">
-        <h1 className="text-2xl font-bold mb-4">
-          💊 Pharmacy POS System
-        </h1>
+        <h1 className="text-2xl font-bold mb-4">💊 Pharmacy POS System</h1>
 
         {/* 🔍 SEARCH */}
         <input
@@ -148,17 +143,15 @@ export default function POSPage() {
 
                 {/* ⚠️ LOW STOCK WARNING */}
                 {isLowStock && (
-                  <p className="text-yellow-600 text-sm">
-                    ⚠️ Low stock
-                  </p>
+                  <p className="text-yellow-600 text-sm">⚠️ Low stock</p>
                 )}
 
                 {/* ❌ OUT OF STOCK */}
                 {isOutOfStock && (
-                  <p className="text-red-600 text-sm">
-                    ❌ Out of stock
-                  </p>
+                  <p className="text-red-600 text-sm">❌ Out of stock</p>
                 )}
+
+                {isExpired && <p className="text-red-600 text-sm">⚠️ Expired</p>}
 
                 <button
                   onClick={() => addToCart(med)}
@@ -179,7 +172,6 @@ export default function POSPage() {
 
       {/* 🧾 CART / RECEIPT */}
       <div className="border rounded p-4 bg-white shadow">
-
         {!receipt ? (
           <>
             <h2 className="text-xl font-bold mb-4">🧾 Cart</h2>
@@ -204,22 +196,16 @@ export default function POSPage() {
                       type="number"
                       value={item.quantity}
                       min="1"
-                      onChange={(e) =>
-                        updateQty(item.id, e.target.value)
-                      }
+                      onChange={(e) => updateQty(item.id, e.target.value)}
                       className="border w-16 px-1"
                     />
-                    <span>
-                      ${item.price * item.quantity}
-                    </span>
+                    <span>${item.price * item.quantity}</span>
                   </div>
                 </div>
               ))
             )}
 
-            <div className="mt-4 font-bold">
-              Total: ${total}
-            </div>
+            <div className="mt-4 font-bold">Total: ${total}</div>
 
             <button
               onClick={checkout}
@@ -233,26 +219,20 @@ export default function POSPage() {
             {/* 🧾 RECEIPT */}
             <h2 className="text-xl font-bold mb-4">🧾 Receipt</h2>
 
-            <p className="text-sm text-gray-500 mb-2">
-              {receipt.date}
-            </p>
+            <p className="text-sm text-gray-500 mb-2">{receipt.date}</p>
 
             {receipt.items.map((item) => (
               <div key={item.id} className="flex justify-between">
                 <span>
                   {item.name} x{item.quantity}
                 </span>
-                <span>
-                  ${item.price * item.quantity}
-                </span>
+                <span>${item.price * item.quantity}</span>
               </div>
             ))}
 
             <hr className="my-2" />
 
-            <div className="font-bold text-lg">
-              Total: ${receipt.total}
-            </div>
+            <div className="font-bold text-lg">Total: ${receipt.total}</div>
 
             <button
               onClick={() => setReceipt(null)}

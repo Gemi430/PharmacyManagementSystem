@@ -12,27 +12,26 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    try {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      });
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        alert(data.message);
-        return;
-      }
-
-      login(data); // save user
-    } catch (err) {
-      console.error(err);
-      alert("Login failed");
+    if (!res.ok) {
+      alert(data.message);
+      return;
     }
+
+    // 🔐 STORE TOKEN + USER
+    login({
+      user: data.user,
+      token: data.token,
+    });
   };
 
   return (
@@ -43,29 +42,25 @@ export default function Login() {
         className="bg-white p-6 rounded shadow w-80"
       >
         <h2 className="text-xl font-bold mb-4 text-center">
-          🔐 Login
+          🔐 JWT Login
         </h2>
 
         <input
-          type="text"
-          placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          placeholder="Username"
           className="border w-full mb-3 px-3 py-2 rounded"
         />
 
         <input
-          type="password"
-          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          type="password"
           className="border w-full mb-4 px-3 py-2 rounded"
         />
 
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded"
-        >
+        <button className="w-full bg-blue-500 text-white py-2 rounded">
           Login
         </button>
       </form>
