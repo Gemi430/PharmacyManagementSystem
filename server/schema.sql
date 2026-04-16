@@ -107,6 +107,19 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     received_quantity INT DEFAULT 0
 );
 
+-- Inventory adjustments table
+CREATE TABLE IF NOT EXISTS inventory_adjustments (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    medicine_id INT REFERENCES medicines(id),
+    type VARCHAR(20) NOT NULL,
+    quantity INT NOT NULL,
+    previous_stock INT,
+    new_stock INT,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Reports summary table
 CREATE TABLE IF NOT EXISTS daily_sales_summary (
     id SERIAL PRIMARY KEY,

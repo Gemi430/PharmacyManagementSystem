@@ -12,6 +12,7 @@ import SuppliersPage from "../features/suppliers/SuppliersPage";
 import SalesPage from "../features/sales/SalesPage";
 import ReportsPage from "../features/reports/ReportsPage";
 import PurchaseOrdersPage from "../features/purchases/PurchaseOrdersPage";
+import InventoryAdjustmentsPage from "../features/inventory/InventoryAdjustmentsPage";
 import MainLayout from "../layout/MainLayout";
 
 function ProtectedRoute({ children }) {
@@ -141,6 +142,15 @@ function AppRoutes() {
         <ProtectedRoute>
           <MainLayout>
             <PurchaseOrdersPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Inventory Adjustments - admin and manager only */}
+      <Route path="/inventory" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <InventoryAdjustmentsPage />
           </MainLayout>
         </ProtectedRoute>
       } />
