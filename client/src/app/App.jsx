@@ -3,12 +3,15 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import { useAuth } from "../context/AuthContext";
 import Login from "../features/auth/Login";
 import Register from "../features/auth/Register";
-import Dashboard from "../features/dashboard/Dashboard";
+import AdminDashboard from "../features/dashboard/AdminDashboard";
+import ManagerDashboard from "../features/dashboard/ManagerDashboard";
+import PharmacistDashboard from "../features/dashboard/PharmacistDashboard";
 import POSPage from "../features/sales/POSPage";
 import MedicinesPage from "../features/medicines/MedicinesPage";
 import SuppliersPage from "../features/suppliers/SuppliersPage";
 import SalesPage from "../features/sales/SalesPage";
 import ReportsPage from "../features/reports/ReportsPage";
+import PurchaseOrdersPage from "../features/purchases/PurchaseOrdersPage";
 import MainLayout from "../layout/MainLayout";
 
 function ProtectedRoute({ children }) {
@@ -42,6 +45,24 @@ function AuthLayout() {
   return null;
 }
 
+function DashboardRouter() {
+  const { user } = useAuth();
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  switch (user.role) {
+    case 'admin':
+      return <AdminDashboard />;
+    case 'manager':
+      return <ManagerDashboard />;
+    case 'pharmacist':
+    default:
+      return <PharmacistDashboard />;
+  }
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   
@@ -61,14 +82,16 @@ function AppRoutes() {
         </>
       } />
       
-      {/* Protected routes */}
+      {/* Dashboard - role-based */}
       <Route path="/" element={
         <ProtectedRoute>
           <MainLayout>
-            <Dashboard />
+            <DashboardRouter />
           </MainLayout>
         </ProtectedRoute>
       } />
+      
+      {/* POS */}
       <Route path="/pos" element={
         <ProtectedRoute>
           <MainLayout>
@@ -76,6 +99,8 @@ function AppRoutes() {
           </MainLayout>
         </ProtectedRoute>
       } />
+      
+      {/* Medicines */}
       <Route path="/medicines" element={
         <ProtectedRoute>
           <MainLayout>
@@ -83,6 +108,8 @@ function AppRoutes() {
           </MainLayout>
         </ProtectedRoute>
       } />
+      
+      {/* Suppliers */}
       <Route path="/suppliers" element={
         <ProtectedRoute>
           <MainLayout>
@@ -90,6 +117,8 @@ function AppRoutes() {
           </MainLayout>
         </ProtectedRoute>
       } />
+      
+      {/* Sales History */}
       <Route path="/sales" element={
         <ProtectedRoute>
           <MainLayout>
@@ -97,6 +126,8 @@ function AppRoutes() {
           </MainLayout>
         </ProtectedRoute>
       } />
+      
+      {/* Reports */}
       <Route path="/reports" element={
         <ProtectedRoute>
           <MainLayout>
@@ -105,7 +136,16 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      {/* Catch all - redirect to home or login */}
+      {/* Purchase Orders - admin and manager only */}
+      <Route path="/purchases" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <PurchaseOrdersPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

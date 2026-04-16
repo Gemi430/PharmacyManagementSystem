@@ -4,7 +4,6 @@ import pool from '../config/db.js';
 export const getInventoryReport = async (req, res) => {
   try {
     const { category, low_stock, expiring } = req.query;
-
     let query = `
       SELECT m.*, s.name as supplier_name
       FROM medicines m
@@ -15,24 +14,23 @@ export const getInventoryReport = async (req, res) => {
 
     if (category) {
       params.push(category);
-      query += ` AND m.category = $${params.length}`;
+      query += ' AND m.category = $' + params.length;
     }
     if (low_stock === 'true') {
       query += ' AND m.stock <= m.min_stock';
     }
     if (expiring === 'true') {
-      query += ` AND m.expiry_date <= CURRENT_DATE + INTERVAL '90 days'`;
+      query += " AND m.expiry_date <= CURRENT_DATE + INTERVAL '90 days'";
     }
 
     query += ' ORDER BY m.stock ASC';
 
     const result = await pool.query(query, params);
-
-    // Calculate summary
+    
     const summary = {
       totalMedicines: result.rows.length,
-      totalValue: result.rows.reduce((sum, m) => sum + (m.price * m.stock), 0),
-      lowStockCount: result.rows.filter(m => m.stock <= m.min_stock).length,
+      totalValue: result.rows.reduce((sum, m) => sum + (parseFloat(m.price || 0) * parseFloat(m.stock || 0)), 0),
+      lowStockCount: result.rows.filter(m => parseFloat(m.stock || 0) <= parseFloat(m.min_stock || 0)).length,
       expiringCount: result.rows.filter(m => {
         if (!m.expiry_date) return false;
         const expiry = new Date(m.expiry_date);
@@ -44,75 +42,64 @@ export const getInventoryReport = async (req, res) => {
 
     res.json({ medicines: result.rows, summary });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getInventoryReport error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
 
 // GET sales report
 export const getSalesReport = async (req, res) => {
   try {
-    const { start_date, end_date, group_by = 'day' } = req.query;
-
-    let dateFilter = '';
-    if (start_date && end_date) {
-      dateFilter = `WHERE created_at >= '${start_date}' AND created_at <= '${end_date}'`;
-    }
-
     // Sales summary
-    const summaryResult = await pool.query(
-      `SELECT 
-         COUNT(*) as total_transactions,
-         COALESCE(SUM(total_amount), 0) as total_revenue,
-         COALESCE(AVG(total_amount), 0) as avg_transaction,
-         COALESCE(SUM(discount), 0) as total_discounts
-       FROM sales ${dateFilter ? dateFilter.replace('created_at', '') + ' AND' : 'WHERE'} status = 'completed'`
-    );
+    const summaryResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total_transactions,
+        COALESCE(SUM(total_amount), 0) as total_revenue,
+        COALESCE(AVG(total_amount), 0) as avg_transaction,
+        COALESCE(SUM(discount), 0) as total_discounts
+      FROM sales 
+      WHERE status = 'completed'
+    `);
 
     // Sales by payment method
-    const paymentResult = await pool.query(
-      `SELECT payment_method, COUNT(*) as count, SUM(total_amount) as total
-       FROM sales ${dateFilter ? dateFilter.replace('created_at', '') + ' AND' : 'WHERE'} status = 'completed'
-       GROUP BY payment_method`
-    );
+    const paymentResult = await pool.query(`
+      SELECT payment_method, COUNT(*) as count, COALESCE(SUM(total_amount), 0) as total
+      FROM sales 
+      WHERE status = 'completed'
+      GROUP BY payment_method
+    `);
 
     // Top medicines
-    const topMedicinesResult = await pool.query(
-      `SELECT m.name, m.category, SUM(si.quantity) as total_qty, SUM(si.subtotal) as total_revenue
-       FROM sale_items si
-       JOIN medicines m ON si.medicine_id = m.id
-       JOIN sales s ON si.sale_id = s.id
-       ${dateFilter ? dateFilter.replace('created_at', 's.created_at') : ''}
-       AND s.status = 'completed'
-       GROUP BY m.id, m.name, m.category
-       ORDER BY total_revenue DESC
-       LIMIT 10`
-    );
+    const topMedicinesResult = await pool.query(`
+      SELECT m.name, m.category, SUM(si.quantity) as total_qty, SUM(si.subtotal) as total_revenue
+      FROM sale_items si
+      JOIN medicines m ON si.medicine_id = m.id
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.status = 'completed'
+      GROUP BY m.id, m.name, m.category
+      ORDER BY total_revenue DESC
+      LIMIT 10
+    `);
 
     // Sales by category
-    const categoryResult = await pool.query(
-      `SELECT m.category, COUNT(*) as items_sold, SUM(si.subtotal) as total_revenue
-       FROM sale_items si
-       JOIN medicines m ON si.medicine_id = m.id
-       JOIN sales s ON si.sale_id = s.id
-       ${dateFilter ? dateFilter.replace('created_at', 's.created_at') : ''}
-       AND s.status = 'completed'
-       GROUP BY m.category
-       ORDER BY total_revenue DESC`
-    );
+    const categoryResult = await pool.query(`
+      SELECT m.category, COUNT(*) as items_sold, SUM(si.subtotal) as total_revenue
+      FROM sale_items si
+      JOIN medicines m ON si.medicine_id = m.id
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.status = 'completed'
+      GROUP BY m.category
+      ORDER BY total_revenue DESC
+    `);
 
     // Daily sales trend
-    let dailyQuery = '';
-    if (group_by === 'day') {
-      dailyQuery = `SELECT DATE(created_at) as date, SUM(total_amount) as revenue, COUNT(*) as transactions
-                    FROM sales ${dateFilter ? dateFilter.replace('created_at', '') + ' AND' : 'WHERE'} status = 'completed'
-                    GROUP BY DATE(created_at) ORDER BY date`;
-    } else {
-      dailyQuery = `SELECT DATE_TRUNC('week', created_at) as date, SUM(total_amount) as revenue, COUNT(*) as transactions
-                    FROM sales ${dateFilter ? dateFilter.replace('created_at', '') + ' AND' : 'WHERE'} status = 'completed'
-                    GROUP BY DATE_TRUNC('week', created_at) ORDER BY date`;
-    }
-    const dailyResult = await pool.query(dailyQuery);
+    const dailyResult = await pool.query(`
+      SELECT DATE(created_at) as date, SUM(total_amount) as revenue, COUNT(*) as transactions
+      FROM sales
+      WHERE status = 'completed'
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `);
 
     res.json({
       summary: summaryResult.rows[0],
@@ -122,20 +109,20 @@ export const getSalesReport = async (req, res) => {
       dailySales: dailyResult.rows
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getSalesReport error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
 
 // GET expiry report
 export const getExpiryReport = async (req, res) => {
   try {
-    const { days = 90 } = req.query;
+    const days = req.query.days || 90;
 
     const result = await pool.query(
       `SELECT * FROM medicines 
        WHERE expiry_date IS NOT NULL 
-       AND expiry_date <= CURRENT_DATE + INTERVAL '${days} days'
+       AND expiry_date <= CURRENT_DATE + INTERVAL '` + days + ` days'
        ORDER BY expiry_date ASC`
     );
 
@@ -147,100 +134,110 @@ export const getExpiryReport = async (req, res) => {
         const now = new Date();
         return expiry.getMonth() === now.getMonth() && expiry.getFullYear() === now.getFullYear();
       }).length,
-      totalValueAtRisk: result.rows.reduce((sum, m) => sum + (m.price * m.stock), 0)
+      totalValueAtRisk: result.rows.reduce((sum, m) => sum + (parseFloat(m.price || 0) * parseFloat(m.stock || 0)), 0)
     };
 
     res.json({ medicines: result.rows, summary });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getExpiryReport error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
 
 // GET supplier report
 export const getSupplierReport = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT s.*, 
-              COUNT(m.id) as medicine_count,
-              COALESCE(SUM(m.stock), 0) as total_stock,
-              COALESCE(SUM(m.price * m.stock), 0) as total_value
-       FROM suppliers s
-       LEFT JOIN medicines m ON s.id = m.supplier_id
-       GROUP BY s.id
-       ORDER BY total_value DESC`
-    );
+    const result = await pool.query(`
+      SELECT s.*, 
+             COUNT(m.id) as medicine_count,
+             COALESCE(SUM(m.stock), 0) as total_stock,
+             COALESCE(SUM(m.price * m.stock), 0) as total_value
+      FROM suppliers s
+      LEFT JOIN medicines m ON s.id = m.supplier_id
+      GROUP BY s.id
+      ORDER BY total_value DESC
+    `);
 
     res.json(result.rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getSupplierReport error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
 
 // GET dashboard stats
 export const getDashboardStats = async (req, res) => {
   try {
+    console.log('Fetching dashboard stats...');
+    
     // Today's sales
-    const todaySales = await pool.query(
-      `SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as transactions
-       FROM sales 
-       WHERE status = 'completed' AND created_at >= CURRENT_DATE`
-    );
+    const todaySales = await pool.query(`
+      SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as transactions
+      FROM sales 
+      WHERE status = 'completed' AND created_at >= CURRENT_DATE
+    `);
+    console.log('Today sales:', todaySales.rows[0]);
 
     // This month's sales
-    const monthSales = await pool.query(
-      `SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as transactions
-       FROM sales 
-       WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`
-    );
+    const monthSales = await pool.query(`
+      SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as transactions
+      FROM sales 
+      WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
+    `);
+    console.log('Month sales:', monthSales.rows[0]);
 
     // Low stock items
-    const lowStock = await pool.query(
-      'SELECT COUNT(*) as count FROM medicines WHERE stock <= min_stock'
-    );
+    const lowStock = await pool.query(`
+      SELECT COUNT(*) as count FROM medicines WHERE stock <= min_stock
+    `);
+    console.log('Low stock:', lowStock.rows[0]);
 
     // Expiring soon
-    const expiringSoon = await pool.query(
-      `SELECT COUNT(*) as count FROM medicines 
-       WHERE expiry_date IS NOT NULL AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'`
-    );
+    const expiringSoon = await pool.query(`
+      SELECT COUNT(*) as count FROM medicines 
+      WHERE expiry_date IS NOT NULL AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'
+    `);
+    console.log('Expiring soon:', expiringSoon.rows[0]);
 
     // Total medicines
     const totalMedicines = await pool.query('SELECT COUNT(*) as count FROM medicines');
+    console.log('Total medicines:', totalMedicines.rows[0]);
 
     // Recent sales
-    const recentSales = await pool.query(
-      `SELECT s.*, u.username as cashier_name
-       FROM sales s
-       LEFT JOIN users u ON s.user_id = u.id
-       ORDER BY s.created_at DESC
-       LIMIT 5`
-    );
+    const recentSales = await pool.query(`
+      SELECT s.*, u.username as cashier_name
+      FROM sales s
+      LEFT JOIN users u ON s.user_id = u.id
+      ORDER BY s.created_at DESC
+      LIMIT 5
+    `);
+    console.log('Recent sales:', recentSales.rows.length);
 
     // Top selling today
-    const topSelling = await pool.query(
-      `SELECT m.name, SUM(si.quantity) as total_qty
-       FROM sale_items si
-       JOIN medicines m ON si.medicine_id = m.id
-       JOIN sales s ON si.sale_id = s.id
-       WHERE s.created_at >= CURRENT_DATE AND s.status = 'completed'
-       GROUP BY m.id, m.name
-       ORDER BY total_qty DESC
-       LIMIT 5`
-    );
+    const topSelling = await pool.query(`
+      SELECT m.name, SUM(si.quantity) as total_qty
+      FROM sale_items si
+      JOIN medicines m ON si.medicine_id = m.id
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.created_at >= CURRENT_DATE AND s.status = 'completed'
+      GROUP BY m.id, m.name
+      ORDER BY total_qty DESC
+      LIMIT 5
+    `);
+    console.log('Top selling:', topSelling.rows.length);
 
     res.json({
-      todaySales: todaySales.rows[0],
-      monthSales: monthSales.rows[0],
-      lowStock: lowStock.rows[0].count,
-      expiringSoon: expiringSoon.rows[0].count,
-      totalMedicines: totalMedicines.rows[0].count,
-      recentSales: recentSales.rows,
-      topSelling: topSelling.rows
+      todaySales: todaySales.rows[0] || { total: 0, transactions: 0 },
+      monthSales: monthSales.rows[0] || { total: 0, transactions: 0 },
+      lowStock: parseInt(lowStock.rows[0]?.count || 0),
+      expiringSoon: parseInt(expiringSoon.rows[0]?.count || 0),
+      totalMedicines: parseInt(totalMedicines.rows[0]?.count || 0),
+      recentSales: recentSales.rows || [],
+      topSelling: topSelling.rows || []
     });
+    console.log('Dashboard stats sent successfully');
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getDashboardStats error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };

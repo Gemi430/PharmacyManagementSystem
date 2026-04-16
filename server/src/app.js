@@ -6,6 +6,7 @@ import salesRoutes from './routes/sales.routes.js';
 import authRoutes from "./routes/auth.routes.js";
 import supplierRoutes from './routes/supplier.routes.js';
 import reportRoutes from './routes/report.routes.js';
+import purchaseRoutes from './routes/purchase.routes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
