@@ -1,275 +1,190 @@
-import { useEffect, useState } from "react";
-import api from "../../api/axios";
+import { useState, useEffect } from 'react';
+import { reportService } from '../reports/report.service';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import Button from '../../components/ui/Button';
 
-export default function POSPage() {
-  const [medicines, setMedicines] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [search, setSearch] = useState("");
-  const [receipt, setReceipt] = useState(null);
+export default function Dashboard() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('today');
 
   useEffect(() => {
-    fetchMedicines();
-  }, []);
+    loadStats();
+  }, [period]);
 
-  const fetchMedicines = async () => {
+  const loadStats = async () => {
     try {
-      const res = await api.get("/medicines");
-      setMedicines(res.data);
-    } catch (err) {
-      console.error("Error fetching medicines:", err);
+      setLoading(true);
+      const data = await reportService.getDashboard();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to load dashboard stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 🔍 SEARCH FILTER
-  const filteredMedicines = medicines.filter((med) =>
-    med.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // 🛒 ADD TO CART
-  const addToCart = (med) => {
-    if (med.stock === 0) return;
-
-    const exists = cart.find((item) => item.id === med.id);
-
-    if (exists) {
-      setCart(
-        cart.map((item) =>
-          item.id === med.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { ...med, quantity: 1 }]);
-    }
-  };
-
-  // ❌ REMOVE
-  const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
-
-  // ✏️ UPDATE QTY
-  const updateQty = (id, qty) => {
-    const value = Number(qty);
-    if (value <= 0) return;
-
-    setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, quantity: value } : item
-      )
+  if (loading || !stats) {
+    return (
+      <div className="p-6 flex justify-center items-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
     );
-  };
+  }
 
-  // 💰 TOTAL
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-
-  // 💳 CHECKOUT
-  const checkout = async () => {
-    try {
-      const items = cart.map((item) => ({
-        medicine_id: item.id,
-        quantity: item.quantity,
-      }));
-
-      const res = await api.post("/sales", {
-        items,
-      });
-
-      const data = res.data;
-
-      setReceipt({
-        items: cart,
-        total: data.total || total,
-        date: new Date().toLocaleString(),
-      });
-
-      setCart([]);
-      fetchMedicines();
-    } catch (err) {
-      console.error(err);
-      alert("Checkout failed");
-    }
-  };
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   return (
-    <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 min-h-screen">
-
-      {/* 💊 MEDICINES */}
-      <div className="col-span-2">
-        <h1 className="text-2xl font-bold mb-4">
-          💊 Pharmacy POS System
-        </h1>
-
-        {/* 🔍 SEARCH */}
-        <input
-          type="text"
-          placeholder="Search medicine..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-2 w-full mb-4 rounded"
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          {filteredMedicines.map((med) => {
-            const isLowStock = med.stock > 0 && med.stock <= 5;
-            const isOutOfStock = med.stock === 0;
-            const isExpired =
-              med.expiry_date &&
-              new Date(med.expiry_date) < new Date();
-
-            return (
-              <div
-                key={med.id}
-                className={`border rounded p-3 shadow bg-white ${
-                  isLowStock ? "border-yellow-500" : ""
-                } ${isOutOfStock ? "opacity-50" : ""}`}
-              >
-                <h2 className="font-bold">{med.name}</h2>
-                <p>Price: ${med.price}</p>
-
-                <p
-                  className={
-                    isLowStock
-                      ? "text-yellow-600 font-semibold"
-                      : "text-gray-600"
-                  }
-                >
-                  Stock: {med.stock}
-                </p>
-
-                {/* ⚠️ LOW STOCK */}
-                {isLowStock && (
-                  <p className="text-yellow-600 text-sm">
-                    ⚠️ Low stock
-                  </p>
-                )}
-
-                {/* ❌ OUT OF STOCK */}
-                {isOutOfStock && (
-                  <p className="text-red-600 text-sm">
-                    ❌ Out of stock
-                  </p>
-                )}
-
-                {/* ⛔ EXPIRED */}
-                {isExpired && (
-                  <p className="text-red-600 text-sm">
-                    ⚠️ Expired
-                  </p>
-                )}
-
-                <button
-                  onClick={() => addToCart(med)}
-                  disabled={isOutOfStock || isExpired}
-                  className={`mt-2 px-3 py-1 text-white rounded ${
-                    isOutOfStock || isExpired
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-500"
-                  }`}
-                >
-                  Add to Cart
-                </button>
-              </div>
-            );
-          })}
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex gap-2">
+          {['today', 'week', 'month'].map((p) => (
+            <Button
+              key={p}
+              variant={period === p ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setPeriod(p)}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* 🧾 CART / RECEIPT */}
-      <div className="border rounded p-4 bg-white shadow">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-full">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">Today's Sales</p>
+              <p className="text-2xl font-bold">${parseFloat(stats.todaySales.total).toFixed(2)}</p>
+              <p className="text-sm text-gray-500">{stats.todaySales.transactions} transactions</p>
+            </div>
+          </div>
+        </div>
 
-        {!receipt ? (
-          <>
-            <h2 className="text-xl font-bold mb-4">Cart</h2>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-full">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">This Month</p>
+              <p className="text-2xl font-bold">${parseFloat(stats.monthSales.total).toFixed(2)}</p>
+              <p className="text-sm text-gray-500">{stats.monthSales.transactions} transactions</p>
+            </div>
+          </div>
+        </div>
 
-            {cart.length === 0 ? (
-              <p>Cart is empty</p>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">Low Stock Items</p>
+              <p className="text-2xl font-bold">{stats.lowStock}</p>
+              <p className="text-sm text-gray-500">Need restocking</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-red-100 rounded-full">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">Expiring Soon</p>
+              <p className="text-2xl font-bold">{stats.expiringSoon}</p>
+              <p className="text-sm text-gray-500">Within 30 days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Sales */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Recent Sales</h2>
+          <div className="space-y-3">
+            {stats.recentSales.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No sales today</p>
             ) : (
-              cart.map((item) => (
-                <div key={item.id} className="mb-3 border-b pb-2">
-                  <div className="flex justify-between">
-                    <span>{item.name}</span>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-500"
-                    >
-                      ✕
-                    </button>
+              stats.recentSales.map((sale) => (
+                <div key={sale.id} className="flex justify-between items-center py-3 border-b last:border-0">
+                  <div>
+                    <p className="font-medium">#{sale.id}</p>
+                    <p className="text-sm text-gray-500">{sale.cashier_name || 'Unknown'}</p>
                   </div>
-
-                  <div className="flex justify-between mt-1">
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      min="1"
-                      onChange={(e) =>
-                        updateQty(item.id, e.target.value)
-                      }
-                      className="border w-16"
-                    />
-                    <span>
-                      ${item.price * item.quantity}
-                    </span>
+                  <div className="text-right">
+                    <p className="font-medium">${parseFloat(sale.total_amount).toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(sale.created_at).toLocaleTimeString()}
+                    </p>
                   </div>
                 </div>
               ))
             )}
+          </div>
+        </div>
 
-            <div className="mt-4 font-bold">
-              Total: ${total}
-            </div>
+        {/* Top Selling */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Top Selling Today</h2>
+          <div className="space-y-3">
+            {stats.topSelling.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No sales data</p>
+            ) : (
+              stats.topSelling.map((item, index) => (
+                <div key={index} className="flex justify-between items-center py-3 border-b last:border-0">
+                  <div className="flex items-center">
+                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium mr-3">
+                      {index + 1}
+                    </span>
+                    <span>{item.name}</span>
+                  </div>
+                  <span className="font-medium">{item.total_qty} units</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
-            <button
-              onClick={checkout}
-              className="mt-3 w-full bg-green-500 text-white py-2 rounded"
-            >
-              Checkout
-            </button>
-          </>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold mb-4">Receipt</h2>
-
-            <p className="text-sm text-gray-500">
-              {receipt.date}
-            </p>
-
-            {receipt.items.map((item) => (
-              <div key={item.id} className="flex justify-between">
-                <span>
-                  {item.name} x{item.quantity}
-                </span>
-                <span>
-                  ${item.price * item.quantity}
-                </span>
-              </div>
-            ))}
-
-            <hr className="my-2" />
-
-            <div className="font-bold">
-              Total: ${receipt.total}
-            </div>
-
-            <button
-              onClick={() => window.print()}
-              className="mt-2 w-full bg-gray-700 text-white py-2 rounded"
-            >
-              Print Receipt 🧾
-            </button>
-
-            <button
-              onClick={() => setReceipt(null)}
-              className="mt-2 w-full bg-blue-500 text-white py-2 rounded"
-            >
-              New Sale
-            </button>
-          </>
-        )}
+      {/* Quick Stats */}
+      <div className="mt-6 bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4">Quick Overview</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-3xl font-bold text-blue-600">{stats.totalMedicines}</p>
+            <p className="text-gray-600">Total Medicines</p>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-3xl font-bold text-green-600">{stats.todaySales.transactions}</p>
+            <p className="text-gray-600">Today's Transactions</p>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-3xl font-bold text-yellow-600">{stats.lowStock}</p>
+            <p className="text-gray-600">Low Stock Alerts</p>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-3xl font-bold text-red-600">{stats.expiringSoon}</p>
+            <p className="text-gray-600">Expiring Soon</p>
+          </div>
+        </div>
       </div>
     </div>
   );
