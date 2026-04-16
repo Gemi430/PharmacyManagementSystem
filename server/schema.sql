@@ -120,6 +120,50 @@ CREATE TABLE IF NOT EXISTS inventory_adjustments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Categories table
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    parent_id INT REFERENCES categories(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Customers table
+CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    address TEXT,
+    loyalty_points INT DEFAULT 0,
+    total_purchases DECIMAL(10, 2) DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Settings table
+CREATE TABLE IF NOT EXISTS settings (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(50) UNIQUE NOT NULL,
+    value TEXT,
+    description VARCHAR(255),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Stock alerts table
+CREATE TABLE IF NOT EXISTS stock_alerts (
+    id SERIAL PRIMARY KEY,
+    medicine_id INT REFERENCES medicines(id),
+    alert_type VARCHAR(20) NOT NULL,
+    threshold INT,
+    current_value INT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Reports summary table
 CREATE TABLE IF NOT EXISTS daily_sales_summary (
     id SERIAL PRIMARY KEY,
@@ -129,6 +173,17 @@ CREATE TABLE IF NOT EXISTS daily_sales_summary (
     total_items_sold INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Insert default settings
+INSERT INTO settings (key, value, description) VALUES
+('tax_rate', '10', 'Default tax rate percentage'),
+('currency', 'USD', 'Currency symbol'),
+('low_stock_threshold', '10', 'Default low stock threshold'),
+('expiry_warning_days', '90', 'Days before expiry to show warning'),
+('store_name', 'Pharmacy Management System', 'Store name'),
+('store_address', '', 'Store address'),
+('store_phone', '', 'Store phone number')
+ON CONFLICT (key) DO NOTHING;
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name);

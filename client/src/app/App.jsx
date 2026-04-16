@@ -13,6 +13,10 @@ import SalesPage from "../features/sales/SalesPage";
 import ReportsPage from "../features/reports/ReportsPage";
 import PurchaseOrdersPage from "../features/purchases/PurchaseOrdersPage";
 import InventoryAdjustmentsPage from "../features/inventory/InventoryAdjustmentsPage";
+import CategoriesPage from "../features/categories/CategoriesPage";
+import CustomersPage from "../features/customers/CustomersPage";
+import SettingsPage from "../features/settings/SettingsPage";
+import AlertsPage from "../features/alerts/AlertsPage";
 import MainLayout from "../layout/MainLayout";
 
 function ProtectedRoute({ children }) {
@@ -151,6 +155,42 @@ function AppRoutes() {
         <ProtectedRoute>
           <MainLayout>
             <InventoryAdjustmentsPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Categories - admin and manager only */}
+      <Route path="/categories" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <CategoriesPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Customers - all roles */}
+      <Route path="/customers" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <CustomersPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Settings - admin only */}
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <SettingsPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Alerts - admin and manager only */}
+      <Route path="/alerts" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <AlertsPage />
           </MainLayout>
         </ProtectedRoute>
       } />

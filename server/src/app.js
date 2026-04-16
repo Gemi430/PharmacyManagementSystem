@@ -8,6 +8,10 @@ import supplierRoutes from './routes/supplier.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import purchaseRoutes from './routes/purchase.routes.js';
 import inventoryRoutes from './routes/inventory.routes.js';
+import categoryRoutes from './routes/category.routes.js';
+import customerRoutes from './routes/customer.routes.js';
+import settingRoutes from './routes/setting.routes.js';
+import alertRoutes from './routes/alert.routes.js';
 
 const app = express();
 
@@ -22,6 +26,10 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/settings', settingRoutes);
+app.use('/api/alerts', alertRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
