@@ -12,6 +12,10 @@ import categoryRoutes from './routes/category.routes.js';
 import customerRoutes from './routes/customer.routes.js';
 import settingRoutes from './routes/setting.routes.js';
 import alertRoutes from './routes/alert.routes.js';
+import auditRoutes from './routes/audit.routes.js';
+import backupRoutes from './routes/backup.routes.js';
+import emailRoutes from './routes/email.routes.js';
+import locationRoutes from './routes/location.routes.js';
 
 const app = express();
 
@@ -30,6 +34,10 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/backups', backupRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/locations', locationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

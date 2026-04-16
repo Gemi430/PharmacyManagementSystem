@@ -17,6 +17,9 @@ import CategoriesPage from "../features/categories/CategoriesPage";
 import CustomersPage from "../features/customers/CustomersPage";
 import SettingsPage from "../features/settings/SettingsPage";
 import AlertsPage from "../features/alerts/AlertsPage";
+import AuditPage from "../features/audit/AuditPage";
+import BackupPage from "../features/backups/BackupPage";
+import LocationsPage from "../features/locations/LocationsPage";
 import MainLayout from "../layout/MainLayout";
 
 function ProtectedRoute({ children }) {
@@ -191,6 +194,33 @@ function AppRoutes() {
         <ProtectedRoute>
           <MainLayout>
             <AlertsPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Audit Logs - admin only */}
+      <Route path="/audit" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <AuditPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Backups - admin only */}
+      <Route path="/backups" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <BackupPage />
+          </MainLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Locations - admin only */}
+      <Route path="/locations" element={
+        <ProtectedRoute>
+          <MainLayout>
+            <LocationsPage />
           </MainLayout>
         </ProtectedRoute>
       } />
